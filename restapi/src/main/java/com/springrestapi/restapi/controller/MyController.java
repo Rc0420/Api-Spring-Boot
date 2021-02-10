@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Base64;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -15,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +25,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.springrestapi.restapi.entities.User;
 import com.springrestapi.restapi.entities.UserPost;
+import com.springrestapi.restapi.helper.Base64Helper;
 import com.springrestapi.restapi.helper.FileUploadHelper;
 import com.springrestapi.restapi.service.EmailService;
 import com.springrestapi.restapi.service.UserService;
@@ -44,6 +48,9 @@ public class MyController {
 	
 	@Autowired
 	FileUploadHelper fuh;
+	
+	@Autowired
+	Base64Helper base64;
 	
 	@GetMapping("/users")
 	public List<User> getUsers()
@@ -130,15 +137,15 @@ public class MyController {
 	         { 
 	        	 
 	        	 // decode base64 url
-	   	    	  byte[] decodedBytes = Base64.getUrlDecoder().decode(userObj.getProfile_pic_url());
-	   	    	  String decodedUrl = new String(decodedBytes);
+//	   	    	  byte[] decodedBytes = Base64.getUrlDecoder().decode(userObj.getProfile_pic_url());
+//	   	    	  String decodedUrl = new String(decodedBytes);
 	   	    	  
 	   	    	  //	 
 	        	 
 	        	 return ResponseEntity.status(HttpStatus.OK).body("Name:-"+userObj.getName()+"\n"
        				   +"User EmailId:- "+userObj.getEmail()+"\n"
        				   +"UserId- "+userObj.getUid()+"\n"
-       				   +"Profile Url:-"+decodedUrl+"\n"
+       				   +"Profile Url:-"+userObj.getProfile_pic_url()+"\n"
        				   );
 	    	 }
 	    	return new ResponseEntity<>("Incorrect Password",HttpStatus.BAD_REQUEST);
@@ -176,7 +183,9 @@ public class MyController {
 			  
 	    }
 	
-	  @ApiOperation(value = "Login User but not remember password ", tags = "Forgot Password")
+	 
+	
+	 @ApiOperation(value = "Login User but not remember password ", tags = "Forgot Password")
 		   
 	   @PostMapping("/login/forgot_passwd/verify") 
 	    public ResponseEntity<String> resetPasswdWithVerify(@RequestParam String email,@RequestParam int otp, @RequestParam String passwd)
@@ -201,8 +210,9 @@ public class MyController {
 		   return new ResponseEntity<>("Successfull reset Password ",HttpStatus.OK);
 	   }
  
-	  
-	         @ApiOperation(value = "Create New Post ", tags = "Post")
+	 // first method create post and get post  and upload image
+	 
+	 /*        @ApiOperation(value = "Create New Post ", tags = "Post")
 	         @PostMapping("/create_post")
 	         public ResponseEntity<String> createUserPost(@RequestParam int uid,@RequestParam MultipartFile file,@RequestParam String title,@RequestParam String content)
 	         {
@@ -220,7 +230,7 @@ public class MyController {
 		    			}
 		    			
 		    			boolean f = fuh.uploadFile(file);
-		    			
+		    					    			
 		    			if(!f) {
 		    	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Profile Not Upload");
 		    			}
@@ -316,6 +326,177 @@ public class MyController {
 	    		
 	    	return ResponseEntity.status(HttpStatus.OK).body("Successfull upload Profile picture");
 	     } 
+*/
+	
+	 // 2nd method to create post and upload image 
+	  
+	         @ApiOperation(value = "Create New Post ", tags = "Post")
+	         @PostMapping("/create_post")
+	         public ResponseEntity<String> createUserPost(@RequestParam int uid,@RequestParam String title,@RequestParam String content,@RequestBody String image_file)
+	         {
+                
+	        	 User userObj=userservice.fetchByUserId(uid);
+	        	 if(userObj==null)
+	 	    	{
+	 	    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not Found User");
+	 	    	}
+	        	 UserPost userpost=new UserPost(title,content);
+	        	 // image  
+	        	  LocalTime time=LocalTime.now(); 
+		          LocalDate date=LocalDate.now();	
+	        	 
+		          
+		          String filename = userObj.getName()+userObj.getUid()+userpost.getPostId();
+	 			  String path = base64.uploadEncodedImage(image_file, filename);
+	 			if(path==null) 
+	 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Something went wrong");
+		          userpost.setUrlpic(path);
+	 	          userpost.setDate(date);
+	 	          userpost.setTime(time);
+		   //
+	        	 userObj.getPost().add(userpost);
+	        	 userservice.addUser(userObj);
+	 	         return new ResponseEntity<>("Successfull create post ",HttpStatus.OK);
+	         }
+	         
+	         
+	      
+	         
+	     
+	         
+	 /*    @ApiOperation(value = "Retrive post ", tags = "Post")
+	     @GetMapping("/get_post")
+	     public ResponseEntity<String> getAllPost(@RequestParam int uid,@RequestParam int postid) throws Exception
+	     {
+  	   	
+	    	User userObj=userservice.fetchByUserId(uid); 
+	    	if(userObj==null)
+	    	{
+	    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not found User");
+	    	}
+	    	
+	        List<UserPost> userpost=userObj.getPost();
+	          for(UserPost post:userpost)
+	          {
+	        	      if(post.getPostId()==postid) {
+	        		  
+	        	    	  // decode base64 url
+	        	    	  byte[] decodedBytes = Base64.getUrlDecoder().decode(post.getUrlpic());
+	        	    	  String decodedUrl = new String(decodedBytes);
+	        	    	  
+	        	    	  //
+	        	    	  return ResponseEntity.status(HttpStatus.OK).body("Name:-"+userObj.getName()+"\n"
+	        				   +"PostId:- "+post.getPostId()+"\n"
+	        				   +"Title:- "+post.getTitle()+"\n"
+	        				   +"Post Url:-"+decodedUrl+"\n"
+	        				   +"Content:- "+post.getPostContent()+"\n"
+	        				   +"Time and Date:- "+post.getTime()+" "+post.getDate() 
+	        				  );
+	        	      
+	        	      }
+	          }
+	         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Post not contain");  
+	     }    
+	     @ApiOperation(value = "Upload Profile Picture ", tags = "Login")
+	     @PostMapping("/upload_file")
+	     public ResponseEntity<String> FileUpload(@RequestParam int uid,@RequestParam MultipartFile file)throws Exception
+	     {
 
+	    	 User userObj=userservice.fetchByUserId(uid);
+      	 if(userObj==null)
+	    	{
+	    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not Found User");
+	    	}
+      
+      	 // pic url 
+	    			
+	    			if(file.isEmpty()) {
+	    	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Pic Not Found");
+	    			}
+	    			
+	    			boolean f = fuh.uploadFile(file);
+	    			
+	    			if(!f) {
+	    	return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Profile Not Upload");
+	    			}
+	    			
+	    	String url=ServletUriComponentsBuilder.fromCurrentContextPath().path("/image/").path(file.getOriginalFilename()).toUriString();
+	    		//encode base64 url
+
+         String originalUrl = url;
+         String encodedUrl = Base64.getUrlEncoder().encodeToString(originalUrl.getBytes());
+	    		          	 
+      	 //
+
+         userObj.setProfile_pic_url(encodedUrl);      	
+    	   userservice.addUser(userObj);  		
+	    		
+	    		
+	    	return ResponseEntity.status(HttpStatus.OK).body("Successfull upload Profile picture");
+	     } 
+	 
+	 
+	*/
+	         @ApiOperation(value = "Retrive post ", tags = "Post")
+		     @GetMapping("/get_post")
+		     public ResponseEntity<String> getAllPost(@RequestParam int uid,@RequestParam int postid) throws Exception
+		     {
+	  	   	
+		    	User userObj=userservice.fetchByUserId(uid); 
+		    	if(userObj==null)
+		    	{
+		    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not found User");
+		    	}
+		    	
+		        List<UserPost> userpost=userObj.getPost();
+		          for(UserPost post:userpost)
+		          {
+		        	      if(post.getPostId()==postid) {
+		        		  
+		        	 
+		        	    	  return ResponseEntity.status(HttpStatus.OK).body("Name:-"+userObj.getName()+"\n"
+		        				   +"PostId:- "+post.getPostId()+"\n"
+		        				   +"Title:- "+post.getTitle()+"\n"
+		        				   +"Post Url:-"+post.getUrlpic()+"\n"
+		        				   +"Content:- "+post.getPostContent()+"\n"
+		        				   +"Time and Date:- "+post.getTime()+" "+post.getDate() 
+		        				  );
+		        	      
+		        	      }
+		          }
+		         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Post not contain");  
+		     }    
+
+	         
+	         
+	         
+	         
+		     @ApiOperation(value = "Upload Profile Picture ", tags = "Login")
+		     @PostMapping("/upload_file/{uid}")
+		     public ResponseEntity<Object> FileUpload(@PathVariable("uid") int uid ,@RequestBody String file)throws Exception
+		     {
+
+		    	 User userObj=userservice.fetchByUserId(uid);
+	      	    if(userObj==null)
+		    	{
+		    		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Not Found User");
+		    	}
+	      
+	      	
+		    			
+		      String path=base64.uploadEncodedImage(file, userObj.getName()+userObj.getUid());
+
+	          if(path==null)
+	        	  return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("pic not found"); 
+	      	 //
+
+	           userObj.setProfile_pic_url(path);      	
+	    	   userservice.addUser(userObj);  		
+		    		
+		    		
+		    	return ResponseEntity.status(HttpStatus.OK).body("Successfull upload Profile picture");
+		     } 
+   
+	         
 	         
 }

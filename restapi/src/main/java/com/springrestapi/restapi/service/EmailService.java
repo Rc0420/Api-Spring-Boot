@@ -11,7 +11,7 @@ public class  EmailService{
  public boolean SendEmail(String mess,String email) {  
   String host="smtp.gmail.com";  
   final String user="rahulchoudhary420oo7@gmail.com";//change accordingly  
-  final String password="Rahul@8209210799";//change accordingly  
+  final String password="rahul@8209210799";//change accordingly  
     
   String to=email;//change accordingly  
   

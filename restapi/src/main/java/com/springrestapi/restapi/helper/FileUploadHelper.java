@@ -32,7 +32,7 @@ public class FileUploadHelper {
 //			byte data[] = new byte[is.available()];
 //			is.read(data);
 //			
-//			FileOutputStream fos = new FileOutputStream(UPLOAD_DIR+File.separator+multipartFile.getOriginalFilename());
+//		FileOutputStream fos = new FileOutputStream(UPLOAD_DIR+File.separator+multipartFile.getOriginalFilename());
 //		fos.write(data);
 //			
 //		fos.flush();
